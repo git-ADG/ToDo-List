@@ -77,7 +77,7 @@ class _HomeState extends State<Home> {
                 Container(
                   margin: EdgeInsets.only(bottom: 20,right: 20),
                   child: ElevatedButton(
-                    onPressed: (){
+                    onPressed: ()  {
                       _addToDoItem(_todoController.text);
                     },
                   style: ElevatedButton.styleFrom(
