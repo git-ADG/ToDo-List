@@ -13,29 +13,36 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  final todoslist = ToDo.todoList();
+  List<ToDo> todos = ToDo.todoList();
   List<ToDo> _foundToDo = [];
   final _todoController = TextEditingController();
-
-  List<String> spArray = [];
-  bool spCLicked = false;
-
+  late SharedPreferences preferences;
 
   @override
   void initState() {
-    _foundToDo = todoslist;
     super.initState();
-    SpAdd();
+    init().then((_) async {
+      if (preferences.getStringList("todo") == null) {
+        await writeToLocal();
+      }
+      setState(() => readFromLocal());
+      _foundToDo = todos;
+    });
   }
 
-  Future<void> SpAdd() async {
-    spArray = todoslist.cast<String>().toList();
-    SharedPreferences sp = await SharedPreferences.getInstance();
-    spArray = sp.getStringList('todo') ?? [];
-    spCLicked = sp.getBool('toDo') ?? false;
-    setState(() {
+  Future<void> init() async {
+    preferences = await SharedPreferences.getInstance();
+  }
 
-    });
+  Future<void> writeToLocal() async {
+    await preferences.setStringList(
+        "todo", todos.map((todo) => todo.toString()).toList());
+  }
+
+  void readFromLocal() {
+    todos = (preferences.getStringList("todo") ?? [])
+        .map((todo) => ToDo.fromString(todo))
+        .toList();
   }
 
   @override
@@ -80,27 +87,27 @@ class _HomeState extends State<Home> {
               children: [
                 Expanded(
                     child: Container(
-                      margin: const EdgeInsets.only(
-                          bottom: 20, left: 20, right: 20),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 5),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          boxShadow: const [
-                            BoxShadow(
-                                color: Colors.grey,
-                                offset: Offset(0, 0),
-                                blurRadius: 10,
-                                spreadRadius: 0)
-                          ],
-                          borderRadius: BorderRadius.circular(10)),
-                      child: TextField(
-                        controller: _todoController,
-                        decoration: const InputDecoration(
-                            hintText: 'Add a new ToDo item',
-                            border: InputBorder.none),
-                      ),
-                    )),
+                  margin:
+                      const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                  decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: const [
+                        BoxShadow(
+                            color: Colors.grey,
+                            offset: Offset(0, 0),
+                            blurRadius: 10,
+                            spreadRadius: 0)
+                      ],
+                      borderRadius: BorderRadius.circular(10)),
+                  child: TextField(
+                    controller: _todoController,
+                    decoration: const InputDecoration(
+                        hintText: 'Add a new ToDo item',
+                        border: InputBorder.none),
+                  ),
+                )),
                 Container(
                   margin: const EdgeInsets.only(bottom: 20, right: 20),
                   child: ElevatedButton(
@@ -129,12 +136,11 @@ class _HomeState extends State<Home> {
   }
 
   void _addToDoItem(String toDo) async {
-    todoslist.add(ToDo(id: DateTime
-        .now()
-        .millisecondsSinceEpoch
-        .toString(), todoText: toDo));
-    SharedPreferences sp = await SharedPreferences.getInstance();
-    sp.setStringList('todo', spArray);
+    todos.add(
+      ToDo(
+          id: DateTime.now().millisecondsSinceEpoch.toString(), todoText: toDo),
+    );
+    await writeToLocal();
     setState(() {});
     _todoController.clear();
   }
@@ -142,11 +148,10 @@ class _HomeState extends State<Home> {
   void _runfilter(String enteredKeyword) {
     List<ToDo> results = [];
     if (enteredKeyword.isEmpty) {
-      results = todoslist;
+      results = todos;
     } else {
-      results = todoslist
-          .where((item) =>
-          item.todoText!
+      results = todos
+          .where((item) => item.todoText!
               .toLowerCase()
               .contains(enteredKeyword.toLowerCase()))
           .toList();
@@ -214,20 +219,19 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Future<void> _handleToDoChange(ToDo toDo) async {
-    toDo.isDone = !toDo.isDone;
-    SharedPreferences sp = await SharedPreferences.getInstance();
-    sp.setBool('toDo', toDo.isDone);
-    sp.getBool('toDo');
-    setState(() {
-
-    });
+  Future<void> _handleToDoChange(String id) async {
+    int ind = todos.indexWhere((todo) => todo.id == id);
+    if (ind != -1) {
+      todos[ind].isDone = !todos[ind].isDone;
+      await writeToLocal();
+      setState(() {});
+    }
   }
 
-  void _deleteToDoItem(String id) {
-    setState(() {
-      todoslist.removeWhere((item) => item.id == id);
-    });
+  void _deleteToDoItem(String id) async {
+    todos.removeWhere((item) => item.id == id);
+    await writeToLocal();
+    setState(() {});
   }
 
   Widget SearchBar() {
